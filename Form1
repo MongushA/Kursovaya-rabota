@@ -1,0 +1,247 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
+using System.Diagnostics;
+
+namespace Kursovaya_Mongush
+{
+    public partial class Form1 : Form
+    {
+        List<int> simple_1 = new List<int>(); // инициализация глобальной переменной  - списка, в котором хранятся простые числа
+        private List<double> yValues = new List<double>();
+        ToolStripLabel dateLabel;
+        ToolStripLabel timeLabel;
+        ToolStripLabel infoLabel;
+        Timer timer;
+        Stopwatch stopWatch = new Stopwatch();
+        public Form1()
+        {
+            InitializeComponent();
+            simple_1.Add(1); // добавление в список заранее 1
+            openFileDialog1.Filter = "Text files(*.txt)|*.txt|All files(*.*)|*.*";
+            saveFileDialog1.Filter = "Text files(*.txt)|*.txt|All files(*.*)|*.*";
+            infoLabel = new ToolStripLabel();
+            infoLabel.Text = "Текущие дата и время:";
+            dateLabel = new ToolStripLabel();
+            timeLabel = new ToolStripLabel();
+
+            statusStrip1.Items.Add(infoLabel);
+            statusStrip1.Items.Add(dateLabel);
+            statusStrip1.Items.Add(timeLabel);
+
+            timer = new Timer() { Interval = 1000 };
+            timer.Tick += timer_Tick;
+            timer.Start();          
+        }       
+        void chart_zoom(Chart original)
+        {
+            original.ChartAreas[0].AxisX.ScaleView.Zoomable = true;
+            original.ChartAreas[0].AxisX.ScaleView.Zoom(1, 100);
+            original.ChartAreas[0].CursorX.IsUserEnabled = true;
+            original.ChartAreas[0].CursorX.IsUserSelectionEnabled = true;
+            original.ChartAreas[0].AxisX.ScrollBar.IsPositionedInside = true;
+
+            original.ChartAreas[0].AxisY.ScaleView.Zoomable = true;
+            original.ChartAreas[0].AxisY.ScaleView.Zoom(0, 100);
+            original.ChartAreas[0].CursorY.IsUserEnabled = true;
+            original.ChartAreas[0].CursorY.IsUserSelectionEnabled = true;
+            original.ChartAreas[0].AxisY.ScrollBar.IsPositionedInside = true;
+
+        }
+        
+        private void button1_Click(object sender, EventArgs e)
+        {
+
+            stopWatch.Start();
+            this.timer1.Start();
+            //график
+            chart1.Series.Clear();
+            Series series = new Series("Сумма\r\nисходного\r\nчисла");
+            Series series1 = new Series("Точки");
+            series1.ChartType = SeriesChartType.FastPoint;
+            series1.MarkerBorderWidth = 1;
+            series1.MarkerSize = 3;
+            series1.Color = Color.Red;
+            series.Color = Color.Blue;
+            series.ChartType = SeriesChartType.Line;
+            chart1.Series.Add(series);
+            chart1.Series.Add(series1);
+            chart_zoom(chart1);
+
+            Series series2 = new Series();
+            series2.Color = Color.Blue;
+            series2.ChartType = SeriesChartType.Line;
+            series2.MarkerBorderWidth = 5;
+            series2.MarkerSize = 3;
+
+            chart3.ChartAreas[0].AxisX.LabelStyle.Format = "H:mm:s";
+            chart3.Series[0].XValueType = ChartValueType.DateTime;
+
+            chart3.ChartAreas[0].AxisX.Minimum = DateTime.Now.ToOADate();
+            chart3.ChartAreas[0].AxisX.Maximum = DateTime.Now.AddMinutes(1).ToOADate();
+
+            chart3.ChartAreas[0].AxisX.IntervalType = DateTimeIntervalType.Seconds;
+            chart3.ChartAreas[0].AxisX.Interval = 5;
+
+
+            int original_Number = 0;
+            try
+            {
+                original_Number = Convert.ToInt32(textBox2.Text); //в данной переменной находится число, введенное пользователем для проверки
+            }
+            catch(Exception ex) //проверка на корректность числа(без букв и т.д.)
+            {
+                MessageBox.Show($"Введенное значение некорректно");
+                return;
+            }
+            if (original_Number % 2 == 1) // проверка на четность
+            {
+                textBox1.Text = "";
+                MessageBox.Show($"Число {original_Number} не является четным");
+                return;
+            }
+            if (original_Number < 4) //проверка на то, больше 4 это число или нет
+            {
+                MessageBox.Show($"Число {original_Number} меньше 3 => не попадает под гипотезу гольдбаха");
+                return;
+            }
+            
+            textBox1.Text = "";
+           
+            simple_Numbers(2, original_Number); //функция для поиска простых чисел в диапазоне от 2 до числа, введенного пользователем
+            if (checkBox1.Checked) //если стоит галочка о выводе
+            {
+                textBox1.Text += $"Простые числа ---> {1} ";
+                for (int i = 1; i < simple_1.Count; i++) // вывод в текстбокс всех простых чисел, меньших исходного
+                {
+                    if (simple_1[i] <= original_Number) textBox1.Text += $"| {simple_1[i]} ";
+                    else break;
+                }
+            }
+         
+            int counter = 0;
+            for (int i = 0; i < (simple_1.Count ); i++) //основной цикл, сравнивает является верным, что 2 числа из списка простых чисел в сумме дают исходное число
+            {
+                for (int j = 0; j < simple_1.Count; j++)
+                { 
+                    if (original_Number == simple_1[i] + simple_1[j]) //если два простых числа в сумме дают исходное - то соответсвущее сообщение выводится в консоль
+                    {
+                        counter++; 
+                    }
+                    progressBar1.Maximum = counter;
+                    if (original_Number == simple_1[i] + simple_1[j]) 
+                    {
+                        textBox1.Text += $"\r\n{original_Number} = {simple_1[i]} + {simple_1[j]}, где {simple_1[i]} и {simple_1[j]} - простые числа";
+                        progressBar1.Value++;
+                        series.Points.AddXY(simple_1[i], simple_1[j]);
+                        series1.Points.AddXY(simple_1[i], simple_1[j]);
+                        series2.Points.AddXY(counter, original_Number);
+                        if (checkBox2.Checked && counter == Convert.ToInt32(numericUpDown1.Value)) return;
+                    }
+                }
+            }
+            stopWatch.Stop();
+            TimeSpan ts = stopWatch.Elapsed;
+            string elapsedTime = String.Format("{0:00}:{1:00}:{2:00}",
+            ts.Minutes, ts.Seconds,
+            ts.Milliseconds / 10);
+            MessageBox.Show(elapsedTime,"Сообщение", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        void simple_Numbers(int min, int max) // функция для поиска простых чисел в заданном диапазоне
+        {
+            int n = simple_1.Count-1;
+            if (max > simple_1[n]) //если максимальное число из диапазона больше максиммального простого числа из списка - ищем новые простые числа
+            {
+                if (simple_1[n]!= 1) min = simple_1[n]+1; // минимальное число - максимальное из спика простых +1
+                for (int i = min; i <= max; i++)
+                {
+                    if (is_simple(i)) // вызов функции для проверки простоты числа
+                    {
+                        simple_1.Add(i); // если число простое - оно добавляется в список
+                    }
+                }
+            }
+            
+        }
+        bool is_simple(int value) //функция для проверки простоты числа
+        {
+          
+            for(int i = 2;i<= (int)(value/2); i++) // проверяем делится ли заданное число на числа от 2 до число/2
+            {
+                if (value % i == 0) return false;
+            }
+            return true; //если не дедится ни на одно число - оно простое и возвращаем соответсвующий результат
+        }
+        //реализация кнопки "Закрыть"
+        private void закрытьToolStripMenuItem_Click(object sender, EventArgs e) 
+        {
+            this.Close();
+        }
+        //реализация кнопки "Очистить"
+        private void очиститьToolStripMenuItem_Click(object sender, EventArgs e) 
+        {
+            textBox1.Text = "";
+            textBox2.Text = "";
+        }
+        //реализация кнопки "Открыть"
+        private void открытьToolStripMenuItem_Click(object sender, EventArgs e) 
+        {
+            try
+            {
+                if (openFileDialog1.ShowDialog() == DialogResult.Cancel) return;
+                string filename = openFileDialog1.FileName;
+                textBox2.Text = File.ReadAllText(filename);
+            }
+            catch
+            {
+                MessageBox.Show($"Возникла ошибка при открытии файла. Проверьте введенное имя и существует ли такой файл");
+            }
+        }
+        //реализация кнопки "Сохранить"
+        private void сохранитьToolStripMenuItem_Click(object sender, EventArgs e) 
+        {
+            try
+            {
+                if (saveFileDialog1.ShowDialog() == DialogResult.Cancel) return;
+                string filename = saveFileDialog1.FileName;
+                File.WriteAllText(filename,textBox1.Text);
+            }
+            catch
+            {
+                MessageBox.Show($"Возникла ошибка при сохранении файла. Проверьте введенное имя и существует ли такой файл");
+            }
+        }
+        //реализация кнопки "Справка"
+        private void справкаToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Form2 form2 = new Form2();
+            form2.Show();
+        }
+
+        void timer_Tick(object sender, EventArgs e)
+        {
+            dateLabel.Text = DateTime.Now.ToLongDateString();
+            timeLabel.Text = DateTime.Now.ToLongTimeString();
+            
+        }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            this.progressBar1.Increment(1);
+            
+            int original_Number = Convert.ToInt32(textBox2.Text);
+            DateTime timenow = DateTime.Now;
+
+            chart3.Series[0].Points.AddXY(timenow, original_Number);
+        }
+    }
+}
